@@ -17,6 +17,7 @@ import com.techwell.stareast.a11y.A11yHelper
 import kotlin.reflect.KClass
 import logger
 import org.assertj.core.description.TextDescription
+import org.openqa.selenium.By
 import org.openqa.selenium.OutputType
 import org.openqa.selenium.TakesScreenshot
 
@@ -80,7 +81,7 @@ open class AbstractStepDefs(protected val testDataContainer: TestDataContainer) 
         getWebDriverSession().currentPage = page
     }
 
-    
+
     private fun doA11YCheck() {
         if (testDataContainer.doA11YCheck()) {
             val scenario = testDataContainer.getScenario()
@@ -88,11 +89,32 @@ open class AbstractStepDefs(protected val testDataContainer: TestDataContainer) 
             val webDriver = getWebDriver()
             val issues = A11yHelper.hasAccessibilityIssues(webDriver, a11yExclusions)
 
+
+
             if (issues.isNotEmpty()) {
+
                 issues.forEach { violation ->
-                    val violationString = "Violated Rule: ${ violation.id } on page ${
+                    val violationString = "Violated Rule: ${violation.id} on page ${
                         getCurrentPage().toString().substringAfterLast(".")
-                    } - ${ violation.nodes.joinToString("") { node -> "\n\t on: ${ node.html }"}}"
+                    } - ${violation.nodes.joinToString(separator = "") { node -> "\n\ton: ${node.html}" }}"
+
+                    val elemente = violation.nodes.map { it.target }.first() as ArrayList<String>
+                    val locator = elemente.first()
+
+                    //  elemente.forEach {
+                    val element = webDriver.findElement(By.cssSelector(locator))
+                    if (element.size.width > 0) {
+                        testDataContainer.addScreenshot(
+                            (element as TakesScreenshot).getScreenshotAs(OutputType.BYTES),
+                            "element with issue at step #${testDataContainer.getStepIndex()} - ${violation.description}"
+                        )
+                    } else {
+                       //TODO find a strategy to make images for hidden elements
+                        testDataContainer.addStringtoList("debug", "Element without screenshot ${element.getAttribute("outerHTML")} with size ${element.size}")
+                    }
+                    // }
+
+
                     testDataContainer.addScreenshot(
                         (webDriver as TakesScreenshot).getScreenshotAs(OutputType.BYTES),
                         "Forced A11y screenshot for step#${testDataContainer.getStepIndex()} - ${violation.description}"
@@ -103,9 +125,10 @@ open class AbstractStepDefs(protected val testDataContainer: TestDataContainer) 
                 val softAssertions = testDataContainer.getSoftAssertionObject()
                 softAssertions
                     .assertThat(issues)
-                    .`as`(TextDescription("Found ${issues.size} relevant A11Y violations in sceanrio '${scenario.name}' step# ${testDataContainer.getStepIndex()}"))
+                    .`as`(TextDescription("Found ${issues.size} relevant A11Y violations in sceanrio \"${scenario.name}\" step# ${testDataContainer.getStepIndex()}"))
                     .isEmpty()
             }
+
         }
     }
     

@@ -105,6 +105,7 @@ class Hooks(private val testDataContainer: TestDataContainer) {
             val isMobile = (webDriverSession.webDriver as RemoteWebDriver).isMobile()
             scenario.log("isMobile active for used webdriver: " + isMobile)
             scenario.log("Last page which was used: " + webDriverSession.currentPage)
+            scenario.log("Debuginfos:\n ${testDataContainer.getAs<List<String>>("debug")}")
             scenario.attach(webDriverSession.webDriver.pageSource.toByteArray(), "text/html", "pagesource")
 
             testDataContainer.setTestData("windowsize", webDriverSession.webDriver.manage().window().size)
